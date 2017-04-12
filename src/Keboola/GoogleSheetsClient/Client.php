@@ -11,9 +11,6 @@ use Keboola\Google\ClientBundle\Google\RestApi as GoogleApi;
 
 class Client
 {
-    /** @var GoogleApi */
-    protected $api;
-
     const URI_DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files';
 
     const URI_DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -21,6 +18,11 @@ class Client
     const URI_SPREADSHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
 
     const MIME_TYPE_SPREADSHEET = 'application/vnd.google-apps.spreadsheet';
+
+    /** @var GoogleApi */
+    protected $api;
+
+    protected $defaultFields = ['kind', 'id', 'name', 'mimeType', 'parents'];
 
     public function __construct(GoogleApi $api)
     {
@@ -35,6 +37,11 @@ class Client
         return $this->api;
     }
 
+    public function setDefaultFields($fields)
+    {
+        $this->defaultFields = $fields;
+    }
+
     /**
      * @param $fileId
      * @param array $fields
@@ -44,11 +51,7 @@ class Client
     public function getFile($fileId, $fields = [])
     {
         $uri = self::URI_DRIVE_FILES . '/' . $fileId;
-        if (!empty($fields)) {
-            $uri .= sprintf('?fields=%s', implode(',', $fields));
-        }
-        $response = $this->api->request($uri);
-
+        $response = $this->api->request($this->addFields($uri, $fields));
         return json_decode($response->getBody()->getContents(), true);
     }
 
@@ -63,7 +66,7 @@ class Client
         if (!empty($query)) {
             $uri .= sprintf('?q=%s', $query);
         }
-        $response = $this->api->request($uri);
+        $response = $this->api->request($this->addFields($uri));
 
         return json_decode($response->getBody()->getContents(), true);
     }
@@ -82,10 +85,10 @@ class Client
         $mediaUrl = sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $fileMetadata['id']);
 
         $response = $this->api->request(
-            $mediaUrl,
+            $this->addFields($mediaUrl),
             'PATCH',
             [
-                'Content-Type' => 'text/csv',
+                'Content-Type' => mime_content_type($pathname),
                 'Content-Length' => filesize($pathname)
             ],
             [
@@ -108,7 +111,7 @@ class Client
         ];
 
         $response = $this->api->request(
-            self::URI_DRIVE_FILES,
+            $this->addFields(self::URI_DRIVE_FILES),
             'POST',
             [
                 'Content-Type' => 'application/json',
@@ -130,14 +133,13 @@ class Client
      */
     public function updateFile($fileId, $pathname, $params)
     {
-        // update metadata
         $responseJson = $this->updateFileMetadata($fileId, $params);
 
         $response = $this->api->request(
-            sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']),
+            $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id'])),
             'PATCH',
             [
-                'Content-Type' => 'text/csv',
+                'Content-Type' => mime_content_type($pathname),
                 'Content-Length' => filesize($pathname)
             ],
             [
@@ -163,7 +165,7 @@ class Client
         }
 
         $response = $this->api->request(
-            $uri,
+            $this->addFields($uri),
             'PATCH',
             [
                 'Content-Type' => 'application/json',
@@ -469,5 +471,14 @@ class Client
             }
         }
         return false;
+    }
+
+    protected function addFields($uri, $fields = [])
+    {
+        if (empty($fields)) {
+            $fields = $this->defaultFields;
+        }
+        $delimiter = (strstr($uri, '?') === false) ? '?' : '&';
+        return $uri . sprintf('%sfields=%s', $delimiter, implode(',', $fields));
     }
 }

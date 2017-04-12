@@ -66,7 +66,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
             ]
         );
 
-        $gdFile = $this->client->getFile($gdFile['id'], ['id', 'name', 'parents']);
+        $gdFile = $this->client->getFile($gdFile['id']);
         $this->assertArrayHasKey('id', $gdFile);
         $this->assertArrayHasKey('name', $gdFile);
         $this->assertArrayHasKey('parents', $gdFile);
@@ -83,6 +83,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
         $this->assertArrayHasKey('id', $file);
         $this->assertArrayHasKey('name', $file);
+        $this->assertArrayHasKey('parents', $file);
         $this->assertEquals('titanic', $file['name']);
 
         $this->client->deleteFile($gdFile['id']);
@@ -98,6 +99,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayHasKey('id', $res);
         $this->assertArrayHasKey('name', $res);
         $this->assertArrayHasKey('kind', $res);
+        $this->assertArrayHasKey('parents', $res);
         $this->assertEquals($gdFile['id'], $res['id']);
         $this->assertEquals($gdFile['name'] . '_changed', $res['name']);
 
