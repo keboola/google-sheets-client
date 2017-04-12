@@ -66,7 +66,7 @@ class Client
         if (!empty($query)) {
             $uri .= sprintf('?q=%s', $query);
         }
-        $response = $this->api->request($this->addFields($uri));
+        $response = $this->api->request($uri);
 
         return json_decode($response->getBody()->getContents(), true);
     }
