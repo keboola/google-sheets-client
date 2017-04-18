@@ -139,7 +139,7 @@ class Client
             $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id'])),
             'PATCH',
             [
-                'Content-Type' => mime_content_type($pathname),
+                'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
                 'Content-Length' => filesize($pathname)
             ],
             [
