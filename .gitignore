@@ -3,3 +3,4 @@
 .idea/
 tests.sh
 composer.lock
+.DS_Store

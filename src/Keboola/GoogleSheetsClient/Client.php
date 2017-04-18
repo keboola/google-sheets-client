@@ -88,7 +88,7 @@ class Client
             $this->addFields($mediaUrl),
             'PATCH',
             [
-                'Content-Type' => mime_content_type($pathname),
+                'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
                 'Content-Length' => filesize($pathname)
             ],
             [
