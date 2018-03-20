@@ -5,6 +5,7 @@ export CLIENT_SECRET="";
 export ACCESS_TOKEN="";
 export REFRESH_TOKEN="";
 export GOOGLE_DRIVE_FOLDER="";
+export GOOGLE_DRIVE_TEAM_FOLDER="";
 
 export CODECLIMATE_REPO_TOKEN="";
 
