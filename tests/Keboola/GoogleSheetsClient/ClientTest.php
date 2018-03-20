@@ -298,6 +298,88 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayNotHasKey('values', $values);
     }
 
+    public function testCreateFileInTeamFolder()
+    {
+        $this->client->setTeamDriveSupport(true);
+        $folderId = getenv('GOOGLE_DRIVE_TEAM_FOLDER');
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic.csv',
+            'titanic',
+            [
+                'parents' => [$folderId]
+            ]
+        );
+
+        $gdFile = $this->client->getFile($gdFile['id']);
+        $this->assertArrayHasKey('id', $gdFile);
+        $this->assertArrayHasKey('name', $gdFile);
+        $this->assertArrayHasKey('parents', $gdFile);
+        $this->assertContains($folderId, $gdFile['parents']);
+        $this->assertEquals('titanic', $gdFile['name']);
+
+        $this->client->deleteFile($gdFile['id']);
+    }
+
+    public function testGetTeamFile()
+    {
+        $this->client->setTeamDriveSupport(true);
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic.csv',
+            'titanic',
+            [
+                'parents' => [getenv('GOOGLE_DRIVE_TEAM_FOLDER')]
+            ]
+        );
+        $file = $this->client->getFile($gdFile['id']);
+
+        $this->assertArrayHasKey('id', $file);
+        $this->assertArrayHasKey('name', $file);
+        $this->assertArrayHasKey('parents', $file);
+        $this->assertEquals('titanic', $file['name']);
+
+        $this->client->deleteFile($gdFile['id']);
+    }
+
+    public function testUpdateTeamFile()
+    {
+        $this->client->setTeamDriveSupport(true);
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic.csv',
+            'titanic',
+            [
+                getenv('GOOGLE_DRIVE_TEAM_FOLDER')
+            ]
+    );
+        $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
+            'name' => $gdFile['name'] . '_changed'
+        ]);
+
+        $this->assertArrayHasKey('id', $res);
+        $this->assertArrayHasKey('name', $res);
+        $this->assertArrayHasKey('kind', $res);
+        $this->assertArrayHasKey('parents', $res);
+        $this->assertEquals($gdFile['id'], $res['id']);
+        $this->assertEquals($gdFile['name'] . '_changed', $res['name']);
+
+        $this->client->deleteFile($gdFile['id']);
+    }
+
+    public function testDeleteTeamFile()
+    {
+        $this->client->setTeamDriveSupport(true);
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic.csv',
+            'titanic',
+            [
+                getenv('GOOGLE_DRIVE_TEAM_FOLDER')
+            ]
+        );
+        $this->client->deleteFile($gdFile['id']);
+
+        $this->expectException('GuzzleHttp\\Exception\\ClientException');
+        $this->client->getFile($gdFile['id']);
+    }
+
     protected function csvToArray($pathname)
     {
         return array_map('str_getcsv', file($pathname));

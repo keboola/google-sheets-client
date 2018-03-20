@@ -24,6 +24,8 @@ class Client
 
     protected $defaultFields = ['kind', 'id', 'name', 'mimeType', 'parents'];
 
+    protected $teamDriveSupport = false;
+
     public function __construct(GoogleApi $api)
     {
         $this->api = $api;
@@ -42,6 +44,11 @@ class Client
         $this->defaultFields = $fields;
     }
 
+    public function setTeamDriveSupport($value)
+    {
+        $this->teamDriveSupport = $value;
+    }
+
     /**
      * @param $fileId
      * @param array $fields
@@ -50,8 +57,12 @@ class Client
      */
     public function getFile($fileId, $fields = [])
     {
-        $uri = self::URI_DRIVE_FILES . '/' . $fileId;
-        $response = $this->api->request($this->addFields($uri, $fields));
+        $uri = $this->addFields(sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId), $fields);
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
+
+        $response = $this->api->request($uri);
         return json_decode($response->getBody()->getContents(), true);
     }
 
@@ -66,8 +77,11 @@ class Client
         if (!empty($query)) {
             $uri .= sprintf('?q=%s', $query);
         }
-        $response = $this->api->request($uri);
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
 
+        $response = $this->api->request($uri);
         return json_decode($response->getBody()->getContents(), true);
     }
 
@@ -82,10 +96,16 @@ class Client
     {
         $fileMetadata = $this->createFileMetadata($title, $params);
 
-        $mediaUrl = sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $fileMetadata['id']);
+        $mediaUrl = $this->addFields(
+            sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $fileMetadata['id'])
+        );
+        if ($this->teamDriveSupport) {
+            $mediaUrl = $this->addTeamDrive($mediaUrl);
+        }
+
 
         $response = $this->api->request(
-            $this->addFields($mediaUrl),
+            $mediaUrl,
             'PATCH',
             [
                 'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
@@ -110,8 +130,13 @@ class Client
             'name' => $title
         ];
 
+        $uri = $this->addFields(self::URI_DRIVE_FILES);
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
+
         $response = $this->api->request(
-            $this->addFields(self::URI_DRIVE_FILES),
+            $uri,
             'POST',
             [
                 'Content-Type' => 'application/json',
@@ -135,8 +160,13 @@ class Client
     {
         $responseJson = $this->updateFileMetadata($fileId, $params);
 
+        $uri = $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']));
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
+
         $response = $this->api->request(
-            $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id'])),
+            $uri,
             'PATCH',
             [
                 'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
@@ -163,6 +193,9 @@ class Client
         if (!empty($params)) {
             $uri .= '?' . \GuzzleHttp\Psr7\build_query($params);
         }
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
 
         $response = $this->api->request(
             $this->addFields($uri),
@@ -185,10 +218,11 @@ class Client
      */
     public function deleteFile($fileId)
     {
-        return $this->api->request(
-            sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId),
-            'DELETE'
-        );
+        $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
+        if ($this->teamDriveSupport) {
+            $uri = $this->addTeamDrive($uri);
+        }
+        return $this->api->request($uri, 'DELETE');
     }
 
     /**
@@ -220,10 +254,7 @@ class Client
     {
         $response = $this->api->request(
             sprintf('%s%s', self::URI_SPREADSHEETS, $fileId),
-            'GET',
-            [
-                'Accept' => 'application/json'
-            ]
+            'GET'
         );
 
         return json_decode($response->getBody()->getContents(), true);
@@ -242,13 +273,7 @@ class Client
             $uri .= '?' . \GuzzleHttp\Psr7\build_query($params);
         }
 
-        $response = $this->api->request(
-            $uri,
-            'GET',
-            [
-                'Accept' => 'application/json'
-            ]
-        );
+        $response = $this->api->request($uri, 'GET');
 
         return json_decode($response->getBody()->getContents(), true);
     }
@@ -274,12 +299,8 @@ class Client
         $response = $this->api->request(
             self::URI_SPREADSHEETS,
             'POST',
-            [
-                'Accept' => 'application/json',
-            ],
-            [
-                'json' => $body
-            ]
+            [],
+            ['json' => $body]
         );
 
         return json_decode($response->getBody()->getContents(), true);
@@ -351,12 +372,8 @@ class Client
                 $spreadsheetId
             ),
             'POST',
-            [
-                'Accept' => 'application/json',
-            ],
-            [
-                'json' => $body
-            ]
+            [],
+            ['json' => $body]
         );
 
         return json_decode($response->getBody()->getContents(), true);
@@ -379,9 +396,7 @@ class Client
                 $range
             ),
             'PUT',
-            [
-                'Accept' => 'application/json',
-            ],
+            [],
             [
                 'json' => [
                     'values' => $values
@@ -409,9 +424,7 @@ class Client
                 $range
             ),
             'POST',
-            [
-                'Accept' => 'application/json',
-            ],
+            [],
             [
                 'json' => [
                     'range' => $range,
@@ -434,9 +447,7 @@ class Client
                 $range
             ),
             'POST',
-            [
-                'Accept' => 'application/json',
-            ]
+            []
         );
 
         return json_decode($response->getBody()->getContents(), true);
@@ -480,5 +491,11 @@ class Client
         }
         $delimiter = (strstr($uri, '?') === false) ? '?' : '&';
         return $uri . sprintf('%sfields=%s', $delimiter, implode(',', $fields));
+    }
+
+    protected function addTeamDrive($uri)
+    {
+        $delimiter = (strstr($uri, '?') === false) ? '?' : '&';
+        return sprintf('%s%ssupportsTeamDrives=true', $uri, $delimiter);
     }
 }
