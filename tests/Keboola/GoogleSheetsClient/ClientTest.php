@@ -349,7 +349,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
             [
                 getenv('GOOGLE_DRIVE_TEAM_FOLDER')
             ]
-    );
+        );
         $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
             'name' => $gdFile['name'] . '_changed'
         ]);
