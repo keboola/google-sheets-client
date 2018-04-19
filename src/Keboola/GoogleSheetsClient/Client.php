@@ -427,8 +427,6 @@ class Client
             [],
             [
                 'json' => [
-                    'range' => $range,
-                    'majorDimension' => 'ROWS',
                     'values' => $values
                 ]
             ]
