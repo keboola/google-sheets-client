@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 class ClientTest extends TestCase
 {
     /** @var string */
-    protected $dataPath = __DIR__ . '/../../data';
+    protected $dataPath = __DIR__ . '/data';
 
     /** @var Client */
     protected $client;

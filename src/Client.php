@@ -120,7 +120,7 @@ class Client
             ]
         );
 
-        return json_decode($response->getBody(), true);
+        return json_decode($response->getBody()->getContents(), true);
     }
 
     public function updateFile(string $fileId, string $pathname, array $params): array
@@ -167,7 +167,7 @@ class Client
             ]
         );
 
-        return json_decode($response->getBody(), true);
+        return json_decode($response->getBody()->getContents(), true);
     }
 
     public function deleteFile(string $fileId): \GuzzleHttp\Psr7\Response

@@ -1,11 +1,10 @@
-language: php
-php:
-  - '5.6'
-  - '7.0'
-  - '7.1'
+sudo: required
 
-install:
-  - composer install -n
+language: bash
 
-script: ./vendor/bin/phpcs --standard=psr2 -n --ignore=vendor --extensions=php . && ./vendor/bin/phpunit
+services:
+  - docker
+
+script:
+  - docker-compose run --rm tests
 
