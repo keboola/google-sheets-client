@@ -9,6 +9,8 @@ services:
       - CLIENT_ID
       - CLIENT_SECRET
       - REFRESH_TOKEN
+      - GOOGLE_DRIVE_FOLDER
+      - GOOGLE_DRIVE_TEAM_FOLDER
 
   dev:
     build: .
@@ -21,3 +23,5 @@ services:
       - CLIENT_ID
       - CLIENT_SECRET
       - REFRESH_TOKEN
+      - GOOGLE_DRIVE_FOLDER
+      - GOOGLE_DRIVE_TEAM_FOLDER
