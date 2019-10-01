@@ -1,29 +1,30 @@
 <?php
-/**
- * Author: miro@keboola.com
- * Date: 10/03/2017
- */
+
+declare(strict_types=1);
 
 namespace Keboola\GoogleSheetsClient;
 
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Psr7\Response;
 use Keboola\Google\ClientBundle\Google\RestApi as GoogleApi;
 
 class Client
 {
-    const URI_DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files';
+    public const URI_DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files';
 
-    const URI_DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+    public const URI_DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
-    const URI_SPREADSHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
+    public const URI_SPREADSHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
 
-    const MIME_TYPE_SPREADSHEET = 'application/vnd.google-apps.spreadsheet';
+    public const MIME_TYPE_SPREADSHEET = 'application/vnd.google-apps.spreadsheet';
 
     /** @var GoogleApi */
     protected $api;
 
+    /** @var array */
     protected $defaultFields = ['kind', 'id', 'name', 'mimeType', 'parents'];
 
+    /** @var bool */
     protected $teamDriveSupport = false;
 
     public function __construct(GoogleApi $api)
@@ -31,31 +32,22 @@ class Client
         $this->api = $api;
     }
 
-    /**
-     * @return GoogleApi
-     */
-    public function getApi()
+    public function getApi(): GoogleApi
     {
         return $this->api;
     }
 
-    public function setDefaultFields($fields)
+    public function setDefaultFields(array $fields): void
     {
         $this->defaultFields = $fields;
     }
 
-    public function setTeamDriveSupport($value)
+    public function setTeamDriveSupport(bool $value): void
     {
         $this->teamDriveSupport = $value;
     }
 
-    /**
-     * @param $fileId
-     * @param array $fields
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function getFile($fileId, $fields = [])
+    public function getFile(string $fileId, array $fields = []): array
     {
         $uri = $this->addFields(sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId), $fields);
         if ($this->teamDriveSupport) {
@@ -66,12 +58,7 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param string $query
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function listFiles($query = '')
+    public function listFiles(string $query = ''): array
     {
         $uri = self::URI_DRIVE_FILES;
         if (!empty($query)) {
@@ -85,14 +72,7 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $pathname
-     * @param $title
-     * @param array $params
-     * @return array
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function createFile($pathname, $title, $params = [])
+    public function createFile(string $pathname, string $title, array $params = []): array
     {
         $fileMetadata = $this->createFileMetadata($title, $params);
 
@@ -103,31 +83,25 @@ class Client
             $mediaUrl = $this->addTeamDrive($mediaUrl);
         }
 
-
         $response = $this->api->request(
             $mediaUrl,
             'PATCH',
             [
                 'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
-                'Content-Length' => filesize($pathname)
+                'Content-Length' => filesize($pathname),
             ],
             [
-                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r'))
+                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r')),
             ]
         );
 
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $title
-     * @param $params
-     * @return mixed
-     */
-    public function createFileMetadata($title, $params)
+    public function createFileMetadata(string $title, array $params): array
     {
         $body = [
-            'name' => $title
+            'name' => $title,
         ];
 
         $uri = $this->addFields(self::URI_DRIVE_FILES);
@@ -142,24 +116,16 @@ class Client
                 'Content-Type' => 'application/json',
             ],
             [
-                'json' => array_merge($body, $params)
+                'json' => array_merge($body, $params),
             ]
         );
 
         return json_decode($response->getBody(), true);
     }
 
-    /**
-     * @param $fileId
-     * @param $pathname
-     * @param $params
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function updateFile($fileId, $pathname, $params)
+    public function updateFile(string $fileId, string $pathname, array $params): array
     {
         $responseJson = $this->updateFileMetadata($fileId, $params);
-
         $uri = $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']));
         if ($this->teamDriveSupport) {
             $uri = $this->addTeamDrive($uri);
@@ -170,24 +136,17 @@ class Client
             'PATCH',
             [
                 'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
-                'Content-Length' => filesize($pathname)
+                'Content-Length' => filesize($pathname),
             ],
             [
-                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r'))
+                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r')),
             ]
         );
 
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $fileId
-     * @param array $body
-     * @param array $params
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function updateFileMetadata($fileId, $body = [], $params = [])
+    public function updateFileMetadata(string $fileId, array $body = [], array $params = []): array
     {
         $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
         if (!empty($params)) {
@@ -204,19 +163,14 @@ class Client
                 'Content-Type' => 'application/json',
             ],
             [
-                'json' => $body
+                'json' => $body,
             ]
         );
 
         return json_decode($response->getBody(), true);
     }
 
-    /**
-     * @param $fileId
-     * @return \GuzzleHttp\Psr7\Response
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function deleteFile($fileId)
+    public function deleteFile(string $fileId): \GuzzleHttp\Psr7\Response
     {
         $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
         if ($this->teamDriveSupport) {
@@ -225,13 +179,7 @@ class Client
         return $this->api->request($uri, 'DELETE');
     }
 
-    /**
-     * @param $fileId
-     * @param string $mimeType
-     * @return \GuzzleHttp\Psr7\Response
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function exportFile($fileId, $mimeType = 'text/csv')
+    public function exportFile(string $fileId, string $mimeType = 'text/csv'): \GuzzleHttp\Psr7\Response
     {
         return $this->api->request(
             sprintf(
@@ -243,14 +191,7 @@ class Client
         );
     }
 
-    /**
-     * Returns list of sheet for given document
-     *
-     * @param $fileId
-     * @return array|bool
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function getSpreadsheet($fileId)
+    public function getSpreadsheet(string $fileId): array
     {
         $response = $this->api->request(
             sprintf('%s%s', self::URI_SPREADSHEETS, $fileId),
@@ -260,13 +201,7 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $spreadsheetId
-     * @param $range
-     * @param array $params
-     * @return array
-     */
-    public function getSpreadsheetValues($spreadsheetId, $range, $params = [])
+    public function getSpreadsheetValues(string $spreadsheetId, string $range, array $params = []): array
     {
         $uri = sprintf('%s%s/values/%s', self::URI_SPREADSHEETS, $spreadsheetId, $range);
         if (!empty($params)) {
@@ -278,18 +213,11 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $fileProperties
-     * @param $sheets
-     * @param null $fileId
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function createSpreadsheet($fileProperties, $sheets, $fileId = null)
+    public function createSpreadsheet(array $fileProperties, array $sheets, ?string $fileId = null): array
     {
         $body = [
             'properties' => $fileProperties,
-            'sheets' => $sheets
+            'sheets' => $sheets,
         ];
 
         if ($fileId !== null) {
@@ -306,64 +234,45 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $spreadsheetId
-     * @param $sheet
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function addSheet($spreadsheetId, $sheet)
+    public function addSheet(string $spreadsheetId, array $sheet): array
     {
         return $this->batchUpdateSpreadsheet($spreadsheetId, [
             'requests' => [
                 [
-                    'addSheet' => $sheet
-                ]
-            ]
+                    'addSheet' => $sheet,
+                ],
+            ],
         ]);
     }
 
-    public function updateSheet($spreadsheetId, $properties)
+    public function updateSheet(string $spreadsheetId, array $properties): array
     {
         return $this->batchUpdateSpreadsheet($spreadsheetId, [
             'requests' => [
                 [
                     'updateSheetProperties' => [
                         'properties' => $properties,
-                        'fields' => 'title'
-                    ]
-                ]
-            ]
+                        'fields' => 'title',
+                    ],
+                ],
+            ],
         ]);
     }
 
-    /**
-     * @param $spreadsheetId
-     * @param $sheetId
-     * @return mixed
-     */
-    public function deleteSheet($spreadsheetId, $sheetId)
+    public function deleteSheet(string $spreadsheetId, string $sheetId): array
     {
         return $this->batchUpdateSpreadsheet($spreadsheetId, [
             'requests' => [
                 [
                     'deleteSheet' => [
-                        'sheetId' => $sheetId
-                    ]
-                ]
-            ]
+                        'sheetId' => $sheetId,
+                    ],
+                ],
+            ],
         ]);
     }
 
-    /**
-     * Batch Update Spreadsheet Metadata
-     *
-     * @param $spreadsheetId
-     * @param $body
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function batchUpdateSpreadsheet($spreadsheetId, $body)
+    public function batchUpdateSpreadsheet(string $spreadsheetId, array $body): array
     {
         $response = $this->api->request(
             sprintf(
@@ -379,14 +288,7 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $spreadsheetId
-     * @param $range
-     * @param $values
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function updateSpreadsheetValues($spreadsheetId, $range, $values)
+    public function updateSpreadsheetValues(string $spreadsheetId, string $range, array $values): array
     {
         $response = $this->api->request(
             sprintf(
@@ -399,22 +301,15 @@ class Client
             [],
             [
                 'json' => [
-                    'values' => $values
-                ]
+                    'values' => $values,
+                ],
             ]
         );
 
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $spreadsheetId
-     * @param $range
-     * @param $values
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function appendSpreadsheetValues($spreadsheetId, $range, $values)
+    public function appendSpreadsheetValues(string $spreadsheetId, string $range, array $values): array
     {
         $response = $this->api->request(
             sprintf(
@@ -427,15 +322,15 @@ class Client
             [],
             [
                 'json' => [
-                    'values' => $values
-                ]
+                    'values' => $values,
+                ],
             ]
         );
 
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    public function clearSpreadsheetValues($spreadsheetId, $range)
+    public function clearSpreadsheetValues(string $spreadsheetId, string $range): array
     {
         $response = $this->api->request(
             sprintf(
@@ -451,12 +346,7 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param int $count
-     * @return mixed
-     * @throws \Keboola\Google\ClientBundle\Exception\RestApiException
-     */
-    public function generateIds($count = 10)
+    public function generateIds(int $count = 10): array
     {
         $response = $this->api->request(
             sprintf('%s/generateIds?count=%s', self::URI_DRIVE_FILES, $count)
@@ -465,24 +355,68 @@ class Client
         return json_decode($response->getBody()->getContents(), true);
     }
 
-    /**
-     * @param $fileId
-     * @return bool
-     */
-    public function fileExists($fileId)
+    public function fileExists(string $fileId): bool
     {
         try {
             $this->getFile($fileId);
             return true;
         } catch (ClientException $e) {
-            if ($e->getResponse()->getStatusCode() !== 404) {
+            if ($e->getResponse() === null || $e->getResponse()->getStatusCode() !== 404) {
                 throw $e;
             }
         }
         return false;
     }
 
-    protected function addFields($uri, $fields = [])
+    public function listRevisions(string $fileId): array
+    {
+        $response = $this->api->request(
+            sprintf('%s/%s/revisions', self::URI_DRIVE_FILES, $fileId)
+        );
+
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+    public function getRevision(string $fileId, string $revisionId): array
+    {
+        $response = $this->api->request(
+            $this->addFields(
+                sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
+                ['kind', 'id', 'mimeType', 'modifiedTime', 'published']
+            )
+        );
+
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+    public function updateRevision(string $fileId, string $revisionId, array $body): array
+    {
+        $response = $this->api->request(
+            $this->addFields(
+                sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
+                ['kind', 'id', 'mimeType', 'modifiedTime', 'published']
+            ),
+            'PATCH',
+            [
+                'Content-Type' => 'application/json',
+            ],
+            [
+                'json' => $body,
+            ]
+        );
+
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+    public function deleteRevision(string $fileId, string $revisionId): Response
+    {
+        return $this->api->request(
+            sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
+            'DELETE'
+        );
+    }
+
+    protected function addFields(string $uri, array $fields = []): string
     {
         if (empty($fields)) {
             $fields = $this->defaultFields;
@@ -491,7 +425,7 @@ class Client
         return $uri . sprintf('%sfields=%s', $delimiter, implode(',', $fields));
     }
 
-    protected function addTeamDrive($uri)
+    protected function addTeamDrive(string $uri): string
     {
         $delimiter = (strstr($uri, '?') === false) ? '?' : '&';
         return sprintf('%s%ssupportsTeamDrives=true', $uri, $delimiter);
