@@ -368,54 +368,6 @@ class Client
         return false;
     }
 
-    public function listRevisions(string $fileId): array
-    {
-        $response = $this->api->request(
-            sprintf('%s/%s/revisions', self::URI_DRIVE_FILES, $fileId)
-        );
-
-        return json_decode($response->getBody()->getContents(), true);
-    }
-
-    public function getRevision(string $fileId, string $revisionId): array
-    {
-        $response = $this->api->request(
-            $this->addFields(
-                sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
-                ['kind', 'id', 'mimeType', 'modifiedTime', 'published']
-            )
-        );
-
-        return json_decode($response->getBody()->getContents(), true);
-    }
-
-    public function updateRevision(string $fileId, string $revisionId, array $body): array
-    {
-        $response = $this->api->request(
-            $this->addFields(
-                sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
-                ['kind', 'id', 'mimeType', 'modifiedTime', 'published']
-            ),
-            'PATCH',
-            [
-                'Content-Type' => 'application/json',
-            ],
-            [
-                'json' => $body,
-            ]
-        );
-
-        return json_decode($response->getBody()->getContents(), true);
-    }
-
-    public function deleteRevision(string $fileId, string $revisionId): Response
-    {
-        return $this->api->request(
-            sprintf('%s/%s/revisions/%s', self::URI_DRIVE_FILES, $fileId, $revisionId),
-            'DELETE'
-        );
-    }
-
     protected function addFields(string $uri, array $fields = []): string
     {
         if (empty($fields)) {
