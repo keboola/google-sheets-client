@@ -1,29 +1,30 @@
 <?php
-/**
- * Author: miro@keboola.com
- * Date: 10/3/2017
- */
-namespace Keboola\GoogleDriveWriter\Tests;
+
+declare(strict_types=1);
+
+namespace Keboola\GoogleSheetsClient\Tests;
 
 use Keboola\Google\ClientBundle\Google\RestApi;
 use Keboola\GoogleSheetsClient\Client;
+use PHPUnit\Framework\TestCase;
 
-class ClientTest extends \PHPUnit_Framework_TestCase
+class ClientTest extends TestCase
 {
-    protected $dataPath = __DIR__ . '/../../data';
+    /** @var string */
+    protected $dataPath = __DIR__ . '/data';
 
     /** @var Client */
     protected $client;
 
-    public function setUp()
+    public function setUp(): void
     {
-        $api = new RestApi(getenv('CLIENT_ID'), getenv('CLIENT_SECRET'));
-        $api->setCredentials(getenv('ACCESS_TOKEN'), getenv('REFRESH_TOKEN'));
+        $api = new RestApi((string) getenv('CLIENT_ID'), (string) getenv('CLIENT_SECRET'));
+        $api->setCredentials((string) getenv('ACCESS_TOKEN'), (string) getenv('REFRESH_TOKEN'));
         $api->setBackoffsCount(2); // Speeds up the tests
         $this->client = new Client($api);
     }
 
-    public function testGenerateIds()
+    public function testGenerateIds(): void
     {
         $ids = $this->client->generateIds();
         $this->assertNotEmpty($ids);
@@ -31,7 +32,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertCount(10, $ids['ids']);
     }
 
-    public function testFileExists()
+    public function testFileExists(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
@@ -43,7 +44,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testCreateFile()
+    public function testCreateFile(): void
     {
         $gdFile = $this->client->createFile($this->dataPath . '/titanic.csv', 'titanic');
         $this->assertArrayHasKey('id', $gdFile);
@@ -55,14 +56,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testCreateFileInFolder()
+    public function testCreateFileInFolder(): void
     {
         $folderId = getenv('GOOGLE_DRIVE_FOLDER');
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                'parents' => [$folderId]
+                'parents' => [$folderId],
             ]
         );
 
@@ -76,7 +77,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testGetFile()
+    public function testGetFile(): void
     {
         $gdFile = $this->client->createFile($this->dataPath . '/titanic.csv', 'titanic');
         $file = $this->client->getFile($gdFile['id']);
@@ -89,11 +90,11 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testUpdateFile()
+    public function testUpdateFile(): void
     {
         $gdFile = $this->client->createFile($this->dataPath . '/titanic.csv', 'titanic');
         $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
-            'name' => $gdFile['name'] . '_changed'
+            'name' => $gdFile['name'] . '_changed',
         ]);
 
         $this->assertArrayHasKey('id', $res);
@@ -106,7 +107,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testDeleteFile()
+    public function testDeleteFile(): void
     {
         $gdFile = $this->client->createFile($this->dataPath . '/titanic.csv', 'titanic');
         $this->client->deleteFile($gdFile['id']);
@@ -115,7 +116,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->getFile($gdFile['id']);
     }
 
-    public function testCreateSheet()
+    public function testCreateSheet(): void
     {
         $res = $this->client->createSpreadsheet(
             ['title' => 'titanic'],
@@ -136,18 +137,18 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($res['spreadsheetId']);
     }
 
-    public function testAddSheet()
+    public function testAddSheet(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $res = $this->client->addSheet($gdFile['id'], [
-            'properties' => ['title' => 'sheet_2']
+            'properties' => ['title' => 'sheet_2'],
         ]);
 
         $this->assertArrayHasKey('spreadsheetId', $res);
@@ -163,14 +164,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testGetSheet()
+    public function testGetSheet(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $spreadsheet = $this->client->getSpreadsheet($gdFile['id']);
@@ -182,14 +183,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($spreadsheet['spreadsheetId']);
     }
 
-    public function testGetSheetValues()
+    public function testGetSheetValues(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $gdSheet = $this->client->getSpreadsheet($gdFile['id']);
@@ -211,14 +212,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdSheet['spreadsheetId']);
     }
 
-    public function testUpdateSheetValues()
+    public function testUpdateSheetValues(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic_1.csv',
             'titanic_1',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $gdSheet = $this->client->getSpreadsheet($gdFile['id']);
@@ -249,14 +250,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdSheet['spreadsheetId']);
     }
 
-    public function testAppendSheetValues()
+    public function testAppendSheetValues(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic_1.csv',
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $gdSheet = $this->client->getSpreadsheet($gdFile['id']);
@@ -279,14 +280,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdSheet['spreadsheetId']);
     }
 
-    public function testClearSheetValues()
+    public function testClearSheetValues(): void
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_FOLDER')],
-                'mimeType' => Client::MIME_TYPE_SPREADSHEET
+                'mimeType' => Client::MIME_TYPE_SPREADSHEET,
             ]
         );
         $gdSheet = $this->client->getSpreadsheet($gdFile['id']);
@@ -298,7 +299,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayNotHasKey('values', $values);
     }
 
-    public function testCreateFileInTeamFolder()
+    public function testCreateFileInTeamFolder(): void
     {
         $this->client->setTeamDriveSupport(true);
         $folderId = getenv('GOOGLE_DRIVE_TEAM_FOLDER');
@@ -306,7 +307,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                'parents' => [$folderId]
+                'parents' => [$folderId],
             ]
         );
 
@@ -320,14 +321,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testGetTeamFile()
+    public function testGetTeamFile(): void
     {
         $this->client->setTeamDriveSupport(true);
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                'parents' => [getenv('GOOGLE_DRIVE_TEAM_FOLDER')]
+                'parents' => [getenv('GOOGLE_DRIVE_TEAM_FOLDER')],
             ]
         );
         $file = $this->client->getFile($gdFile['id']);
@@ -340,18 +341,18 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testUpdateTeamFile()
+    public function testUpdateTeamFile(): void
     {
         $this->client->setTeamDriveSupport(true);
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                getenv('GOOGLE_DRIVE_TEAM_FOLDER')
+                getenv('GOOGLE_DRIVE_TEAM_FOLDER'),
             ]
         );
         $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
-            'name' => $gdFile['name'] . '_changed'
+            'name' => $gdFile['name'] . '_changed',
         ]);
 
         $this->assertArrayHasKey('id', $res);
@@ -364,14 +365,14 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
-    public function testDeleteTeamFile()
+    public function testDeleteTeamFile(): void
     {
         $this->client->setTeamDriveSupport(true);
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                getenv('GOOGLE_DRIVE_TEAM_FOLDER')
+                getenv('GOOGLE_DRIVE_TEAM_FOLDER'),
             ]
         );
         $this->client->deleteFile($gdFile['id']);
@@ -380,8 +381,8 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->client->getFile($gdFile['id']);
     }
 
-    protected function csvToArray($pathname)
+    protected function csvToArray(string $pathname): array
     {
-        return array_map('str_getcsv', file($pathname));
+        return array_map('str_getcsv', (array) file($pathname));
     }
 }
