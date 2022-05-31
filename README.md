@@ -14,3 +14,7 @@ App is developed on localhost using TDD.
 2. Change directory: `cd google-sheets-client`
 3. Install dependencies: `composer install --no-interaction`    
 6. Run the tests: `./phpunit.sh`
+
+## License
+
+MIT licensed, see [LICENSE](./LICENSE) file.
