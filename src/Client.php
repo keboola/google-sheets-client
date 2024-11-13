@@ -77,7 +77,8 @@ class Client
 
     public function createFile(string $pathname, string $title, array $params = []): array
     {
-        $initResponse = $this->initFileUpload(['name' => $title], $params);
+        $originalContentType = MimeType::fromFilename($pathname);
+        $initResponse = $this->initFileUpload(['name' => $title], $params, $originalContentType);
 
         $contentUploadUrl = $initResponse->getHeader('Location')[0];
         if ($this->teamDriveSupport) {
@@ -88,7 +89,7 @@ class Client
             $contentUploadUrl,
             'PUT',
             [
-                'Content-Type' => MimeType::fromFilename($pathname),
+                'Content-Type' => $originalContentType,
                 'Content-Length' => filesize($pathname),
             ],
             [
@@ -99,11 +100,9 @@ class Client
         return json_decode($uploadResponse->getBody()->getContents(), true);
     }
 
-    public function initFileUpload($body, $params): Response
+    public function initFileUpload($body, $params, $contentType): Response
     {
-        $initUploadUrl = $this->addFields(
-            sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD)
-        );
+        $initUploadUrl = sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD);
         if ($this->teamDriveSupport) {
             $initUploadUrl = $this->addAllDriveSupport($initUploadUrl);
         }
@@ -112,6 +111,7 @@ class Client
             $initUploadUrl,
             'POST',
             [
+                'X-Upload-Content-Type' => $contentType,
                 'Content-Type' => 'application/json',
             ],
             [
@@ -139,7 +139,7 @@ class Client
             'name' => $title,
         ];
 
-        $uri = $this->addFields(self::URI_DRIVE_FILES);
+        $uri = self::URI_DRIVE_FILES;
         if ($this->teamDriveSupport) {
             $uri = $this->addAllDriveSupport($uri);
         }
@@ -161,7 +161,7 @@ class Client
     public function updateFile(string $fileId, string $pathname, array $params): array
     {
         $responseJson = $this->updateFileMetadata($fileId, $params);
-        $uri = $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']));
+        $uri = sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']);
         if ($this->teamDriveSupport) {
             $uri = $this->addAllDriveSupport($uri);
         }
@@ -192,7 +192,7 @@ class Client
         }
 
         $response = $this->api->request(
-            $this->addFields($uri),
+            $uri,
             'PATCH',
             [
                 'Content-Type' => 'application/json',

@@ -56,6 +56,27 @@ class ClientTest extends TestCase
         $this->client->deleteFile($gdFile['id']);
     }
 
+    public function testCreateFileWithConversion(): void
+    {
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic.csv',
+            'titanic',
+            [
+                'mimeType' => 'application/vnd.google-apps.spreadsheet',
+            ]
+        );
+        $this->assertArrayHasKey('id', $gdFile);
+        $this->assertArrayHasKey('name', $gdFile);
+        $this->assertArrayHasKey('kind', $gdFile);
+        $this->assertEquals('titanic', $gdFile['name']);
+        $this->assertEquals('drive#file', $gdFile['kind']);
+
+        $fileMeta = $this->client->getFile($gdFile['id']);
+        self::assertEquals('application/vnd.google-apps.spreadsheet', $fileMeta['mimeType']);
+
+        $this->client->deleteFile($gdFile['id']);
+    }
+
     public function testCreateFileInFolder(): void
     {
         $folderId = getenv('GOOGLE_DRIVE_FOLDER');
