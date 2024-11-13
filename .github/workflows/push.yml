@@ -1,0 +1,47 @@
+name: GitHub Actions
+on: [ push ]
+concurrency: ci-${{ github.ref }} # to avoid tag collisions in the ECR
+env:
+  # Name of the image in the ECR
+  APP_IMAGE: keboola/google-sheets-client
+
+  # DockerHub login
+  DOCKERHUB_USER: "keboolabot"
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # env variables for the tests
+  CLIENT_ID: "383797098604-cq8vactkvnnt2m76e79eb0o774be4ehv.apps.googleusercontent.com"
+  CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+  REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+  GOOGLE_DRIVE_FOLDER: "11ainspltzNu5iZ9zy3jUtK3cRaGHLrVX"
+  GOOGLE_DRIVE_TEAM_FOLDER: "1L-JJubV4T2UEucZ2qUDdKCuI_TTByXgo"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Check out the repo
+        uses: actions/checkout@v4
+      -
+        name: Print Docker version
+        run: docker -v
+      -
+        name: Docker login
+        if: env.DOCKERHUB_TOKEN
+        run: docker login --username "$DOCKERHUB_USER" --password "$DOCKERHUB_TOKEN"
+      -
+        name: Build image
+        run: docker build -t $APP_IMAGE .
+      -
+        name: Run tests
+        run: |
+          docker run \
+          -e CLIENT_ID \
+          -e CLIENT_SECRET \
+          -e REFRESH_TOKEN \
+          -e GOOGLE_DRIVE_FOLDER \
+          -e GOOGLE_DRIVE_TEAM_FOLDER \
+           ${{env.APP_IMAGE}} \
+          composer ci
+
+
