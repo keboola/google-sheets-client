@@ -127,6 +127,7 @@ class ClientTest extends TestCase
         $this->assertArrayHasKey('id', $res);
         $this->assertArrayHasKey('name', $res);
         $this->assertArrayHasKey('kind', $res);
+        $this->assertArrayHasKey('parents', $res);
         $this->assertEquals($gdFile['id'], $res['id']);
         $this->assertEquals($gdFile['name'] . '_changed', $res['name']);
 

@@ -97,6 +97,7 @@ class Client
             ? sprintf('%s/%s?uploadType=resumable', self::URI_DRIVE_UPLOAD, $fileId)
             : sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD);
 
+        $url = $this->addFields($url);
         if ($this->teamDriveSupport) {
             $url = $this->addAllDriveSupport($url);
         }
@@ -126,10 +127,10 @@ class Client
         return $initResponse;
     }
 
-    protected function uploadFileContent(string $contentUploadUrl, string $pathname, ?string $contentType): array
+    protected function uploadFileContent(string $url, string $pathname, ?string $contentType): array
     {
         $uploadResponse = $this->api->request(
-            $contentUploadUrl,
+            $this->addFields($url),
             'PUT',
             [
                 'Content-Type' => $contentType,
@@ -149,7 +150,7 @@ class Client
             'name' => $title,
         ];
 
-        $uri = self::URI_DRIVE_FILES;
+        $uri = $this->addFields(self::URI_DRIVE_FILES);
         if ($this->teamDriveSupport) {
             $uri = $this->addAllDriveSupport($uri);
         }
