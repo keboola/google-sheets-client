@@ -184,7 +184,7 @@ class Client
 
     public function updateFileMetadata(string $fileId, array $body = [], array $params = []): array
     {
-        $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
+        $uri = $this->addFields(sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId));
         if (!empty($params)) {
             $uri .= '?' . \GuzzleHttp\Psr7\build_query($params);
         }
