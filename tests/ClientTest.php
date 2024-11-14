@@ -113,17 +113,31 @@ class ClientTest extends TestCase
 
     public function testUpdateFile(): void
     {
-        $gdFile = $this->client->createFile($this->dataPath . '/titanic.csv', 'titanic');
-        $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
+        $gdFile = $this->client->createFile(
+            $this->dataPath . '/titanic_1.csv',
+            'titanic',
+            [
+                'mimeType' => 'application/vnd.google-apps.spreadsheet',
+            ]
+        );
+        $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic_2.csv', [
             'name' => $gdFile['name'] . '_changed',
         ]);
 
         $this->assertArrayHasKey('id', $res);
         $this->assertArrayHasKey('name', $res);
         $this->assertArrayHasKey('kind', $res);
-        $this->assertArrayHasKey('parents', $res);
         $this->assertEquals($gdFile['id'], $res['id']);
         $this->assertEquals($gdFile['name'] . '_changed', $res['name']);
+
+        $spreadsheet = $this->client->getSpreadsheet($res['id']);
+        $gdValues = $this->client->getSpreadsheetValues(
+            $spreadsheet['spreadsheetId'],
+            'titanic'
+        );
+
+        $expectedValues = $this->csvToArray($this->dataPath . '/titanic_2.csv');
+        $this->assertEquals($expectedValues, $gdValues['values']);
 
         $this->client->deleteFile($gdFile['id']);
     }

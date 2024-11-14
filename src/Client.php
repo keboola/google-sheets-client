@@ -77,45 +77,39 @@ class Client
 
     public function createFile(string $pathname, string $title, array $params = []): array
     {
-        $originalContentType = MimeType::fromFilename($pathname);
-        $initResponse = $this->initFileUpload(['name' => $title], $params, $originalContentType);
+        $contentType = MimeType::fromFilename($pathname);
+        $initResponse = $this->initFileUpload(array_merge(['name' => $title], $params), $contentType);
 
         $contentUploadUrl = $initResponse->getHeader('Location')[0];
         if ($this->teamDriveSupport) {
             $contentUploadUrl = $this->addAllDriveSupport($contentUploadUrl);
         }
 
-        $uploadResponse = $this->api->request(
-            $contentUploadUrl,
-            'PUT',
-            [
-                'Content-Type' => $originalContentType,
-                'Content-Length' => filesize($pathname),
-            ],
-            [
-                'body' => Utils::streamFor(fopen($pathname, 'r')),
-            ]
-        );
-
-        return json_decode($uploadResponse->getBody()->getContents(), true);
+        return $this->uploadFileContent($contentUploadUrl, $pathname, $contentType);
     }
 
-    public function initFileUpload($body, $params, $contentType): Response
-    {
-        $initUploadUrl = sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD);
+    protected function initFileUpload(
+        array $body,
+        ?string $contentType = null,
+        ?string $fileId = null
+    ): Response {
+        $url = $fileId
+            ? sprintf('%s/%s?uploadType=resumable', self::URI_DRIVE_UPLOAD, $fileId)
+            : sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD);
+
         if ($this->teamDriveSupport) {
-            $initUploadUrl = $this->addAllDriveSupport($initUploadUrl);
+            $url = $this->addAllDriveSupport($url);
         }
 
         $initResponse = $this->api->request(
-            $initUploadUrl,
-            'POST',
+            $url,
+            $fileId ? 'PATCH' : 'POST',
             [
                 'X-Upload-Content-Type' => $contentType,
                 'Content-Type' => 'application/json',
             ],
             [
-                'json' => array_merge($body, $params),
+                'json' => $body,
             ]
         );
 
@@ -132,7 +126,23 @@ class Client
         return $initResponse;
     }
 
-    /** @deprecated */
+    protected function uploadFileContent(string $contentUploadUrl, string $pathname, ?string $contentType): array
+    {
+        $uploadResponse = $this->api->request(
+            $contentUploadUrl,
+            'PUT',
+            [
+                'Content-Type' => $contentType,
+                'Content-Length' => filesize($pathname),
+            ],
+            [
+                'body' => Utils::streamFor(fopen($pathname, 'r')),
+            ]
+        );
+
+        return json_decode($uploadResponse->getBody()->getContents(), true);
+    }
+
     public function createFileMetadata(string $title, array $params): array
     {
         $body = [
@@ -160,25 +170,15 @@ class Client
 
     public function updateFile(string $fileId, string $pathname, array $params): array
     {
-        $responseJson = $this->updateFileMetadata($fileId, $params);
-        $uri = sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']);
+        $contentType = MimeType::fromFilename($pathname);
+        $initResponse = $this->initFileUpload($params, $contentType, $fileId);
+
+        $contentUploadUrl = $initResponse->getHeader('Location')[0];
         if ($this->teamDriveSupport) {
-            $uri = $this->addAllDriveSupport($uri);
+            $contentUploadUrl = $this->addAllDriveSupport($contentUploadUrl);
         }
 
-        $response = $this->api->request(
-            $uri,
-            'PATCH',
-            [
-                'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
-                'Content-Length' => filesize($pathname),
-            ],
-            [
-                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r')),
-            ]
-        );
-
-        return json_decode($response->getBody()->getContents(), true);
+        return $this->uploadFileContent($contentUploadUrl, $pathname, $contentType);
     }
 
     public function updateFileMetadata(string $fileId, array $body = [], array $params = []): array
