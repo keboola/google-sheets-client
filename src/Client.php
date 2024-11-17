@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Keboola\GoogleSheetsClient;
 
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Psr7\MimeType;
 use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\Utils;
 use Keboola\Google\ClientBundle\Google\RestApi as GoogleApi;
+use Keboola\GoogleSheetsClient\Exception\ClientException as SheetsClientException;
 
 class Client
 {
@@ -51,7 +54,7 @@ class Client
     {
         $uri = $this->addFields(sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId), $fields);
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $uri = $this->addAllDriveSupport($uri);
         }
 
         $response = $this->api->request($uri);
@@ -65,7 +68,7 @@ class Client
             $uri .= sprintf('?q=%s', $query);
         }
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $uri = $this->addAllDriveSupport($uri);
         }
 
         $response = $this->api->request($uri);
@@ -74,28 +77,71 @@ class Client
 
     public function createFile(string $pathname, string $title, array $params = []): array
     {
-        $fileMetadata = $this->createFileMetadata($title, $params);
+        $contentType = MimeType::fromFilename($pathname);
+        $initResponse = $this->initFileUpload(array_merge(['name' => $title], $params), $contentType);
 
-        $mediaUrl = $this->addFields(
-            sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $fileMetadata['id'])
-        );
+        $contentUploadUrl = $initResponse->getHeader('Location')[0];
         if ($this->teamDriveSupport) {
-            $mediaUrl = $this->addTeamDrive($mediaUrl);
+            $contentUploadUrl = $this->addAllDriveSupport($contentUploadUrl);
         }
 
-        $response = $this->api->request(
-            $mediaUrl,
-            'PATCH',
+        return $this->uploadFileContent($contentUploadUrl, $pathname, $contentType);
+    }
+
+    protected function initFileUpload(
+        array $body,
+        ?string $contentType = null,
+        ?string $fileId = null
+    ): Response {
+        $url = $fileId
+            ? sprintf('%s/%s?uploadType=resumable', self::URI_DRIVE_UPLOAD, $fileId)
+            : sprintf('%s?uploadType=resumable', self::URI_DRIVE_UPLOAD);
+
+        $url = $this->addFields($url);
+        if ($this->teamDriveSupport) {
+            $url = $this->addAllDriveSupport($url);
+        }
+
+        $initResponse = $this->api->request(
+            $url,
+            $fileId ? 'PATCH' : 'POST',
             [
-                'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
-                'Content-Length' => filesize($pathname),
+                'X-Upload-Content-Type' => $contentType,
+                'Content-Type' => 'application/json',
             ],
             [
-                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r')),
+                'json' => $body,
             ]
         );
 
-        return json_decode($response->getBody()->getContents(), true);
+        if ($initResponse->getStatusCode() !== 200) {
+            throw new SheetsClientException(sprintf(
+                'Failed to initialize upload. %s',
+                $initResponse->getBody()->getContents()
+            ));
+        }
+        if ($initResponse->hasHeader('Location') === false) {
+            throw new SheetsClientException('Missing Location header in response');
+        }
+
+        return $initResponse;
+    }
+
+    protected function uploadFileContent(string $url, string $pathname, ?string $contentType): array
+    {
+        $uploadResponse = $this->api->request(
+            $this->addFields($url),
+            'PUT',
+            [
+                'Content-Type' => $contentType,
+                'Content-Length' => filesize($pathname),
+            ],
+            [
+                'body' => Utils::streamFor(fopen($pathname, 'r')),
+            ]
+        );
+
+        return json_decode($uploadResponse->getBody()->getContents(), true);
     }
 
     public function createFileMetadata(string $title, array $params): array
@@ -106,7 +152,7 @@ class Client
 
         $uri = $this->addFields(self::URI_DRIVE_FILES);
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $uri = $this->addAllDriveSupport($uri);
         }
 
         $response = $this->api->request(
@@ -125,39 +171,29 @@ class Client
 
     public function updateFile(string $fileId, string $pathname, array $params): array
     {
-        $responseJson = $this->updateFileMetadata($fileId, $params);
-        $uri = $this->addFields(sprintf('%s/%s?uploadType=media', self::URI_DRIVE_UPLOAD, $responseJson['id']));
+        $contentType = MimeType::fromFilename($pathname);
+        $initResponse = $this->initFileUpload($params, $contentType, $fileId);
+
+        $contentUploadUrl = $initResponse->getHeader('Location')[0];
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $contentUploadUrl = $this->addAllDriveSupport($contentUploadUrl);
         }
 
-        $response = $this->api->request(
-            $uri,
-            'PATCH',
-            [
-                'Content-Type' => \GuzzleHttp\Psr7\mimetype_from_filename($pathname),
-                'Content-Length' => filesize($pathname),
-            ],
-            [
-                'body' => \GuzzleHttp\Psr7\stream_for(fopen($pathname, 'r')),
-            ]
-        );
-
-        return json_decode($response->getBody()->getContents(), true);
+        return $this->uploadFileContent($contentUploadUrl, $pathname, $contentType);
     }
 
     public function updateFileMetadata(string $fileId, array $body = [], array $params = []): array
     {
-        $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
+        $uri = $this->addFields(sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId));
         if (!empty($params)) {
             $uri .= '?' . \GuzzleHttp\Psr7\build_query($params);
         }
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $uri = $this->addAllDriveSupport($uri);
         }
 
         $response = $this->api->request(
-            $this->addFields($uri),
+            $uri,
             'PATCH',
             [
                 'Content-Type' => 'application/json',
@@ -174,7 +210,7 @@ class Client
     {
         $uri = sprintf('%s/%s', self::URI_DRIVE_FILES, $fileId);
         if ($this->teamDriveSupport) {
-            $uri = $this->addTeamDrive($uri);
+            $uri = $this->addAllDriveSupport($uri);
         }
         return $this->api->request($uri, 'DELETE');
     }
@@ -377,9 +413,9 @@ class Client
         return $uri . sprintf('%sfields=%s', $delimiter, implode(',', $fields));
     }
 
-    protected function addTeamDrive(string $uri): string
+    protected function addAllDriveSupport(string $uri): string
     {
         $delimiter = (strstr($uri, '?') === false) ? '?' : '&';
-        return sprintf('%s%ssupportsTeamDrives=true', $uri, $delimiter);
+        return sprintf('%s%ssupportsAllDrives=true', $uri, $delimiter);
     }
 }
