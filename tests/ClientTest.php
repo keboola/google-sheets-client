@@ -7,19 +7,22 @@ namespace Keboola\GoogleSheetsClient\Tests;
 use Keboola\Google\ClientBundle\Google\RestApi;
 use Keboola\GoogleSheetsClient\Client;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class ClientTest extends TestCase
 {
-    /** @var string */
-    protected $dataPath = __DIR__ . '/data';
+    protected string $dataPath = __DIR__ . '/data';
 
-    /** @var Client */
-    protected $client;
+    protected Client $client;
 
     public function setUp(): void
     {
-        $api = new RestApi((string) getenv('CLIENT_ID'), (string) getenv('CLIENT_SECRET'));
-        $api->setCredentials((string) getenv('ACCESS_TOKEN'), (string) getenv('REFRESH_TOKEN'));
+        $api = RestApi::createWithOAuth(
+            (string) getenv('CLIENT_ID'),
+            (string) getenv('CLIENT_SECRET'),
+            (string) getenv('ACCESS_TOKEN'),
+            (string) getenv('REFRESH_TOKEN'),
+        );
         $api->setBackoffsCount(2); // Speeds up the tests
         $this->client = new Client($api);
     }
@@ -36,7 +39,7 @@ class ClientTest extends TestCase
     {
         $gdFile = $this->client->createFile(
             $this->dataPath . '/titanic.csv',
-            'titanic'
+            'titanic',
         );
         $exists = $this->client->fileExists($gdFile['id']);
         $this->assertTrue($exists);
@@ -63,7 +66,7 @@ class ClientTest extends TestCase
             'titanic',
             [
                 'mimeType' => 'application/vnd.google-apps.spreadsheet',
-            ]
+            ],
         );
         $this->assertArrayHasKey('id', $gdFile);
         $this->assertArrayHasKey('name', $gdFile);
@@ -85,7 +88,7 @@ class ClientTest extends TestCase
             'titanic',
             [
                 'parents' => [$folderId],
-            ]
+            ],
         );
 
         $gdFile = $this->client->getFile($gdFile['id']);
@@ -118,7 +121,7 @@ class ClientTest extends TestCase
             'titanic',
             [
                 'mimeType' => 'application/vnd.google-apps.spreadsheet',
-            ]
+            ],
         );
         $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic_2.csv', [
             'name' => $gdFile['name'] . '_changed',
@@ -134,7 +137,7 @@ class ClientTest extends TestCase
         $spreadsheet = $this->client->getSpreadsheet($res['id']);
         $gdValues = $this->client->getSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
-            'titanic'
+            'titanic',
         );
 
         $expectedValues = $this->csvToArray($this->dataPath . '/titanic_2.csv');
@@ -156,7 +159,7 @@ class ClientTest extends TestCase
     {
         $res = $this->client->createSpreadsheet(
             ['title' => 'titanic'],
-            ['properties' => ['title' => 'my_test_sheet']]
+            ['properties' => ['title' => 'my_test_sheet']],
         );
 
         $this->assertArrayHasKey('spreadsheetId', $res);
@@ -181,7 +184,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
         $res = $this->client->addSheet($spreadsheet['spreadsheetId'], [
             'properties' => ['title' => 'sheet_2'],
@@ -204,7 +207,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
         $spreadsheet = $this->client->getSpreadsheet($spreadsheet['spreadsheetId']);
 
@@ -223,7 +226,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
         $this->client->updateSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
@@ -233,7 +236,7 @@ class ClientTest extends TestCase
 
         $response = $this->client->getSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
-            $spreadsheet['sheets'][0]['properties']['title']
+            $spreadsheet['sheets'][0]['properties']['title'],
         );
 
         $this->assertArrayHasKey('range', $response);
@@ -257,7 +260,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
 
         $values = $this->csvToArray($this->dataPath . '/titanic_2.csv');
@@ -265,7 +268,7 @@ class ClientTest extends TestCase
         $response =$this->client->updateSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
             $spreadsheet['sheets'][0]['properties']['title'],
-            $values
+            $values,
         );
 
         $this->assertArrayHasKey('spreadsheetId', $response);
@@ -278,7 +281,7 @@ class ClientTest extends TestCase
 
         $gdValues = $this->client->getSpreadsheetValues(
             $response['spreadsheetId'],
-            $response['updatedRange']
+            $response['updatedRange'],
         );
 
         $this->assertEquals($values, $gdValues['values']);
@@ -294,7 +297,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
         $this->client->updateSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
@@ -308,13 +311,13 @@ class ClientTest extends TestCase
         $response =$this->client->appendSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
             $spreadsheet['sheets'][0]['properties']['title'],
-            $values
+            $values,
         );
 
         $expectedValues = $this->csvToArray($this->dataPath . '/titanic.csv');
         $gdValues = $this->client->getSpreadsheetValues(
             $response['spreadsheetId'],
-            $spreadsheet['sheets'][0]['properties']['title']
+            $spreadsheet['sheets'][0]['properties']['title'],
         );
         $this->assertEquals($expectedValues, $gdValues['values']);
 
@@ -329,7 +332,7 @@ class ClientTest extends TestCase
             ],
             [
                 'properties' => ['title' => 'sheet_1'],
-            ]
+            ],
         );
         $this->client->updateSpreadsheetValues(
             $spreadsheet['spreadsheetId'],
@@ -353,7 +356,7 @@ class ClientTest extends TestCase
             'titanic',
             [
                 'parents' => [$folderId],
-            ]
+            ],
         );
 
         $gdFile = $this->client->getFile($gdFile['id']);
@@ -374,7 +377,7 @@ class ClientTest extends TestCase
             'titanic',
             [
                 'parents' => [getenv('GOOGLE_DRIVE_TEAM_FOLDER')],
-            ]
+            ],
         );
         $file = $this->client->getFile($gdFile['id']);
 
@@ -393,8 +396,8 @@ class ClientTest extends TestCase
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                getenv('GOOGLE_DRIVE_TEAM_FOLDER'),
-            ]
+                'parents' => [(string) getenv('GOOGLE_DRIVE_TEAM_FOLDER')],
+            ],
         );
         $res = $this->client->updateFile($gdFile['id'], $this->dataPath . '/titanic.csv', [
             'name' => $gdFile['name'] . '_changed',
@@ -417,8 +420,8 @@ class ClientTest extends TestCase
             $this->dataPath . '/titanic.csv',
             'titanic',
             [
-                getenv('GOOGLE_DRIVE_TEAM_FOLDER'),
-            ]
+                'parents' => [(string) getenv('GOOGLE_DRIVE_TEAM_FOLDER')],
+            ],
         );
         $this->client->deleteFile($gdFile['id']);
 
@@ -426,8 +429,18 @@ class ClientTest extends TestCase
         $this->client->getFile($gdFile['id']);
     }
 
+    /**
+     * @return array<int, array<int, string>>
+     */
     protected function csvToArray(string $pathname): array
     {
-        return array_map('str_getcsv', (array) file($pathname));
+        $lines = file($pathname);
+        if ($lines === false) {
+            throw new RuntimeException('Failed to read file: ' . $pathname);
+        }
+        return array_map(static function (string $line): array {
+            $parsed = str_getcsv($line);
+            return array_map(static fn($value) => (string) $value, $parsed);
+        }, $lines);
     }
 }

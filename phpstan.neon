@@ -1,2 +1,5 @@
 parameters:
-    ignoreErrors:
+    level: 8
+    paths:
+        - src
+        - tests
