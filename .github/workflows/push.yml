@@ -14,7 +14,7 @@ env:
   CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
   REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
   GOOGLE_DRIVE_FOLDER: "10Fr5upNhlvxuVKkk1P3obXMXbCv-uU-Q"
-  GOOGLE_DRIVE_TEAM_FOLDER: "10Fr5upNhlvxuVKkk1P3obXMXbCv-uU-Q"
+  GOOGLE_DRIVE_TEAM_FOLDER: "0ADr3AHEcUW6NUk9PVA"
 jobs:
   build:
     runs-on: ubuntu-latest
