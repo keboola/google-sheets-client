@@ -13,7 +13,7 @@ env:
   CLIENT_ID: "383797098604-cq8vactkvnnt2m76e79eb0o774be4ehv.apps.googleusercontent.com"
   CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
   REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-  GOOGLE_DRIVE_FOLDER: "11ainspltzNu5iZ9zy3jUtK3cRaGHLrVX"
+  GOOGLE_DRIVE_FOLDER: "10EHVRPVJTjHtqCJJbTLFBoge0skjc0tR"
   GOOGLE_DRIVE_TEAM_FOLDER: "0ADr3AHEcUW6NUk9PVA"
 jobs:
   build:
